@@ -1,38 +1,11 @@
-local ESX = nil
-local QBCore = nil 
-local FrameworkFound = nil
 local nuiOpen = false
 local modelCreated = {}
 
-LoadFramework = function()
-    if Config.Framework == 'esx' then 
-        ESX = exports['es_extended']:getSharedObject()
-        FrameworkFound = 'esx'
-    elseif Config.Framework == 'qbcore' then 
-        QBCore = exports["qb-core"]:GetCoreObject()
-        FrameworkFound = 'qbcore'
-    elseif Config.Framework == 'autodetect' then
-        if GetResourceState('es_extended') == 'started' then 
-            ESX = exports['es_extended']:getSharedObject()
-            FrameworkFound = 'esx'
-        elseif GetResourceState('qb-core') == 'started' then
-            QBCore = exports["qb-core"]:GetCoreObject()
-            FrameworkFound = 'qbcore'
-        else
-            FrameworkFound = 'standalone'
-        end
-    elseif Config.Framework == 'standalone' then
-        FrameworkFound = 'standalone'
-    end
-end
-
-Citizen.CreateThread(function()
-    LoadFramework()
+CreateThread(function()
     TriggerServerEvent('ricky-vinewood:loadText')
 end)
 
-RegisterNetEvent('ricky-vinewood:openNui')
-AddEventHandler('ricky-vinewood:openNui', function(text, color)
+RegisterNetEvent('ricky-vinewood:openNui', function(text, color)
     nuiOpen = true
     SetNuiFocus(true, true)
     SendNUIMessage({
@@ -55,10 +28,9 @@ RegisterNUICallback('close', function(data)
     SetNuiFocus(false, false)
 end)
 
-RegisterNetEvent('ricky-vinewood:saveText')
-AddEventHandler('ricky-vinewood:saveText', function(data)
+RegisterNetEvent('ricky-vinewood:saveText', function(data)
     UpdateMap(data)
-    if nuiOpen then 
+    if nuiOpen then
         SendNUIMessage({
             type = "UPDATE",
             text = data[1],
@@ -69,32 +41,32 @@ end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
-        for k, v in pairs(modelCreated) do
+        for _, v in pairs(modelCreated) do
             DeleteEntity(v)
         end
     end
 end)
 
 hexToRgb = function(hex)
-    hex = hex:gsub("#","")
+    hex = hex:gsub("#", "")
     return {
-        r = tonumber("0x"..hex:sub(1,2)),
-        g = tonumber("0x"..hex:sub(3,4)),
-        b = tonumber("0x"..hex:sub(5,6))
+        r = tonumber("0x" .. hex:sub(1, 2)),
+        g = tonumber("0x" .. hex:sub(3, 4)),
+        b = tonumber("0x" .. hex:sub(5, 6))
     }
 end
 
 UpdateMap = function(data)
-    for k, v in pairs(modelCreated) do
+    for _, v in pairs(modelCreated) do
         DeleteEntity(v)
     end
     modelCreated = {}
     if not data then return end
     local completeText = data[1]
     if not completeText then return end
-    for i=1, #completeText, 1 do 
-        if i > 8 then 
-            return 
+    for i = 1, #completeText, 1 do
+        if i > 8 then
+            return
         end
         local string = completeText:sub(i, i)
         local model = string
@@ -107,9 +79,10 @@ UpdateMap = function(data)
                 Wait(1)
             end
 
-            local obj = CreateObject(model, coords, false, false, false)
+            local obj = CreateObject(model, coords.x, coords.y, coords.z, false, false, false)
+            SetModelAsNoLongerNeeded(model)
             SetEntityHeading(obj, heading)
-            table.insert(modelCreated, obj)
+            modelCreated[#modelCreated + 1] = obj
             SetColorModel(model, "techdevontop", hexToRgb(data[2]))
         end
     end
@@ -120,12 +93,11 @@ SetColorModel = function(model, textureName, colorRgb)
     local txn = 'txn_vinewood_sign'
     local dict = CreateRuntimeTxd(txd)
     local texture = CreateRuntimeTexture(dict, txn, 4, 4)
-    local resolution = GetTextureResolution(txd, txn)
-    if(colorRgb.r == 255 and colorRgb.g == 255 and colorRgb.b == 255) then
+    if (colorRgb.r == 255 and colorRgb.g == 255 and colorRgb.b == 255) then
         RemoveReplaceTexture("mainTexture", textureName)
     else
         SetRuntimeTexturePixel(texture, 0, 0, colorRgb.r, colorRgb.g, colorRgb.b, 255)
         CommitRuntimeTexture(texture)
-        AddReplaceTexture("mainTexture", textureName, txd, txn)  
-    end  
+        AddReplaceTexture("mainTexture", textureName, txd, txn)
+    end
 end
